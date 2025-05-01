@@ -300,7 +300,7 @@ class Agent(Generic[Context]):
 
 		# Telemetry
 		self.telemetry = ProductTelemetry()
-		
+
 		self.action_log = []
 		self.script_format = None  # 'browserql' or 'baas_v2'
 
@@ -993,24 +993,24 @@ class Agent(Generic[Context]):
 				if not result.error:
 					action_type = action.get_action_type()
 					action_data = {
-						"action_type": action_type,
-						"params": action.model_dump(exclude_unset=True),
-						"selector": None,
-						"timestamp": time.time()
+						'action_type': action_type,
+						'params': action.model_dump(exclude_unset=True),
+						'selector': None,
+						'timestamp': time.time(),
 					}
-					
+
 					if action.get_index() is not None:
 						element = cached_selector_map.get(action.get_index())
 						if element:
-							action_data["selector"] = {
-								"xpath": element.xpath,
-								"tag_name": element.tag_name,
-								"attributes": element.attributes,
-								"index": action.get_index(),
-								"is_visible": element.is_visible,
-								"is_interactive": element.is_interactive
+							action_data['selector'] = {
+								'xpath': element.xpath,
+								'tag_name': element.tag_name,
+								'attributes': element.attributes,
+								'index': action.get_index(),
+								'is_visible': element.is_visible,
+								'is_interactive': element.is_interactive,
 							}
-					
+
 					self.action_log.append(action_data)
 					logger.debug(f'Logged action {action_type} for script generation')
 
@@ -1419,37 +1419,37 @@ class Agent(Generic[Context]):
 		# Update done action model too
 		self.DoneActionModel = self.controller.registry.create_action_model(include_actions=['done'], page=page)
 		self.DoneAgentOutput = AgentOutput.type_with_custom_actions(self.DoneActionModel)
-		
+
 	def get_action_log(self) -> List[Dict]:
 		"""
 		Get the current action log.
-		
+
 		Returns:
 			List[Dict]: List of logged actions
 		"""
 		return self.action_log
-		
+
 	def clear_action_log(self) -> None:
 		"""Clear the action log."""
 		self.action_log = []
-		
+
 	def set_script_format(self, format_type: str) -> None:
 		"""
 		Set the preferred script format.
-		
+
 		Args:
 			format_type: Script format type ('browserql' or 'baas_v2')
 		"""
 		self.script_format = format_type
-		
+
 	def get_script(self, format_type: Optional[str] = None, **kwargs) -> str:
 		"""
 		Generate a script from the action log.
-		
+
 		Args:
 			format_type: Script format type ('browserql' or 'baas_v2')
 			**kwargs: Additional arguments for the converter
-			
+
 		Returns:
 			str: Generated script
 		"""
