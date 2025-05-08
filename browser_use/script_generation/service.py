@@ -1,7 +1,8 @@
 """Script generation service for browser-use."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class ScriptGenerator:
 		    action_log: List of action log entries to convert
 		"""
 		self.action_log = action_log or []
+		self._action_counts = defaultdict(int)
 
 	def set_action_log(self, action_log: List[Dict]) -> None:
 		"""
@@ -31,6 +33,116 @@ class ScriptGenerator:
 		    action_log: List of action log entries
 		"""
 		self.action_log = action_log
+		self._action_counts.clear()
+
+	def _get_action_alias(self, action_type: str) -> str:
+		"""
+		Get an alias for a repeated action type.
+		
+		Args:
+		    action_type: The type of action
+		    
+		Returns:
+		    str: The alias for the action
+		"""
+		self._action_counts[action_type] += 1
+		count = self._action_counts[action_type]
+		if count == 1:
+			return ""
+		return f"{action_type}{count}:"
+
+	def _xpath_to_css(self, xpath: str) -> Optional[str]:
+		"""
+		Convert an XPath selector to a CSS selector.
+		
+		Args:
+		    xpath: The XPath selector to convert
+		    
+		Returns:
+		    Optional[str]: The CSS selector, or None if conversion fails
+		"""
+		if not xpath:
+			return None
+			
+		# Remove any xpath= prefix
+		if xpath.startswith('xpath='):
+			xpath = xpath[6:]
+			
+		# Handle absolute paths
+		if xpath.startswith('/'):
+			xpath = xpath[1:]
+			
+		# Split into parts
+		parts = xpath.split('/')
+		css_parts = []
+		
+		for i, part in enumerate(parts):
+			if not part:
+				continue
+				
+			# Handle element name and predicates
+			if '[' in part:
+				element, predicates = part.split('[', 1)
+				predicates = predicates.rstrip(']')
+				
+				# Add element name if present
+				current_part = element if element else '*'
+				
+				# Handle predicates
+				if predicates:
+					# Handle @id
+					if predicates.startswith('@id='):
+						id_value = predicates[4:].strip('"').strip("'")
+						current_part += f"#{id_value}"
+					# Handle @class
+					elif predicates.startswith('@class='):
+						class_value = predicates[7:].strip('"').strip("'")
+						current_part += f".{class_value.replace(' ', '.')}"
+					# Handle @href
+					elif predicates.startswith('@href='):
+						href_value = predicates[6:].strip('"').strip("'")
+						current_part += f'[href="{href_value}"]'
+					# Handle position
+					elif predicates.isdigit():
+						current_part += f":nth-child({int(predicates) + 1})"
+				
+				css_parts.append(current_part)
+			else:
+				css_parts.append(part)
+					
+		return ' > '.join(css_parts)
+
+	def _get_url_from_params(self, params: Dict) -> str:
+		"""
+		Extract URL from params, handling both nested and direct structures.
+		
+		Args:
+		    params: The params dictionary from the action log
+		    
+		Returns:
+		    str: The extracted URL or empty string if not found
+		"""
+		# Handle nested structure (params.go_to_url.url)
+		if 'go_to_url' in params and isinstance(params['go_to_url'], dict):
+			return params['go_to_url'].get('url', '')
+		# Handle direct structure (params.url)
+		return params.get('url', '')
+
+	def _get_text_from_params(self, params: Dict) -> str:
+		"""
+		Extract text from params, handling both nested and direct structures.
+		
+		Args:
+		    params: The params dictionary from the action log
+		    
+		Returns:
+		    str: The extracted text or empty string if not found
+		"""
+		# Handle nested structure (params.input_text.text)
+		if 'input_text' in params and isinstance(params['input_text'], dict):
+			return params['input_text'].get('text', '')
+		# Handle direct structure (params.text)
+		return params.get('text', '')
 
 	def to_browserql(self) -> str:
 		"""
@@ -42,7 +154,7 @@ class ScriptGenerator:
 		if not self.action_log:
 			return '# No actions to convert'
 
-		script = 'mutation AutomateTask {\n'
+		script_parts = ['mutation AutomateTask {']
 
 		for action in self.action_log:
 			action_type = action.get('action_type')
@@ -50,36 +162,71 @@ class ScriptGenerator:
 			selector_info = action.get('selector')
 
 			if action_type == 'go_to_url':
-				url = params.get('url', '')
-				script += f'  goto(url: "{url}") {{\n    status\n  }}\n\n'
+				url = self._get_url_from_params(params)
+				script_parts.append(f'  goto(url: "{url}") {{')
+				script_parts.append('    status')
+				script_parts.append('  }')
 
 			elif action_type == 'click_element_by_index' and selector_info:
-				selector = selector_info.get('xpath', '')
-				script += f'  click(selector: "{selector}") {{\n    selector\n    time\n  }}\n\n'
+				xpath = selector_info.get('xpath', '')
+				css_selector = self._xpath_to_css(xpath)
+				if css_selector:
+					alias = self._get_action_alias('click')
+					script_parts.append(f'  {alias}click(selector: "{css_selector}") {{')
+					script_parts.append('    selector')
+					script_parts.append('    time')
+					script_parts.append('  }')
+				else:
+					script_parts.append(f'  # Failed to convert XPath to CSS: {xpath}')
 
 			elif action_type == 'input_text' and selector_info:
-				selector = selector_info.get('xpath', '')
-				text = params.get('text', '')
-				script += f'  type(selector: "{selector}", text: "{text}") {{\n    selector\n    text\n  }}\n\n'
+				xpath = selector_info.get('xpath', '')
+				css_selector = self._xpath_to_css(xpath)
+				text = self._get_text_from_params(params)
+				if css_selector:
+					script_parts.append(f'  type(selector: "{css_selector}", text: "{text}") {{')
+					script_parts.append('    selector')
+					script_parts.append('    text')
+					script_parts.append('  }')
+				else:
+					script_parts.append(f'  # Failed to convert XPath to CSS: {xpath}')
 
 			elif action_type == 'scroll_down':
-				script += f'  scroll(direction: "down", amount: {params.get("amount", 100)}) {{\n    status\n  }}\n\n'
+				script_parts.append(f'  scroll(direction: "down", amount: {params.get("amount", 100)}) {{')
+				script_parts.append('    status')
+				script_parts.append('  }')
 
 			elif action_type == 'scroll_up':
-				script += f'  scroll(direction: "up", amount: {params.get("amount", 100)}) {{\n    status\n  }}\n\n'
+				script_parts.append(f'  scroll(direction: "up", amount: {params.get("amount", 100)}) {{')
+				script_parts.append('    status')
+				script_parts.append('  }')
 
 			elif action_type == 'extract_content' and selector_info:
-				selector = selector_info.get('xpath', '')
-				script += f'  querySelector(selector: "{selector}") {{\n    innerHTML\n  }}\n\n'
+				xpath = selector_info.get('xpath', '')
+				css_selector = self._xpath_to_css(xpath)
+				if css_selector:
+					script_parts.append(f'  querySelector(selector: "{css_selector}") {{')
+					script_parts.append('    innerHTML')
+					script_parts.append('  }')
+				else:
+					script_parts.append(f'  # Failed to convert XPath to CSS: {xpath}')
 
 			elif action_type == 'done':
 				pass
 
 			else:
-				script += f'  # Unsupported action: {action_type}\n'
+				script_parts.append(f'  # Unsupported action: {action_type}')
 
-		script += '}'
-		return script
+			# Add newline between actions except for the last one
+			if action_type != 'done':
+				script_parts.append('')
+
+		# Remove the last empty line if it exists
+		if script_parts[-1] == '':
+			script_parts.pop()
+			
+		script_parts.append('}')
+		return '\n'.join(script_parts)
 
 	def to_baas_v2(self, language: str = 'javascript') -> str:
 		"""

@@ -991,7 +991,7 @@ class Agent(Generic[Context]):
 				results.append(result)
 
 				if not result.error:
-					action_type = action.get_action_type()
+					action_type = next(iter(action.model_dump(exclude_unset=True).keys()))
 					action_data = {
 						'action_type': action_type,
 						'params': action.model_dump(exclude_unset=True),
