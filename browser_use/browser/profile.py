@@ -642,6 +642,13 @@ class BrowserProfile(BrowserConnectArgs, BrowserLaunchPersistentContextArgs, Bro
 			)
 		return self
 
+	@model_validator(mode='after')
+	def set_docker_downloads_path(self) -> Self:
+		"""Set downloads_path to /shared-downloads in Docker environments if not already set."""
+		if IN_DOCKER and not self.downloads_path:
+			self.downloads_path = '/shared-downloads'
+		return self
+
 	def get_args(self) -> list[str]:
 		if isinstance(self.ignore_default_args, list):
 			default_args = set(CHROME_DEFAULT_ARGS) - set(self.ignore_default_args)
@@ -669,6 +676,7 @@ class BrowserProfile(BrowserConnectArgs, BrowserLaunchPersistentContextArgs, Bro
 				if self.window_position
 				else []
 			),
+			*([f'--download-default-directory={self.downloads_path}'] if self.downloads_path else []),
 		]
 
 		final_args_list = BrowserLaunchArgs.args_as_list(BrowserLaunchArgs.args_as_dict(pre_conversion_args))
