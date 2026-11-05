@@ -544,9 +544,9 @@ install_cloudflared() {
 		linux)
 			mkdir -p "$HOME/.local/bin"
 			if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
-				curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o "$HOME/.local/bin/cloudflared"
+				curl -fL --retry 3 --retry-delay 1 --connect-timeout 15 https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64 -o "$HOME/.local/bin/cloudflared"
 			else
-				curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o "$HOME/.local/bin/cloudflared"
+				curl -fL --retry 3 --retry-delay 1 --connect-timeout 15 https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o "$HOME/.local/bin/cloudflared"
 			fi
 			chmod +x "$HOME/.local/bin/cloudflared"
 			;;

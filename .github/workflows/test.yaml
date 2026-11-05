@@ -26,7 +26,7 @@ on:
 jobs:
   setup-chromium:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15  # Cold apt/browser downloads can exceed five minutes.
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
