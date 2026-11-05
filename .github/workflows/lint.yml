@@ -21,18 +21,21 @@ jobs:
     name: syntax-errors
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv run ruff check --no-fix --select PLE
 
   lint-style:
-    name: code-style
+    name: code-style (Node 26)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.node-version'
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv python install 3.11
@@ -40,11 +43,14 @@ jobs:
       - run: uv run --no-sync pre-commit run --all-files --show-diff-on-failure
 
   lint-typecheck:
-    name: type-checker
+    name: type-checker (Node 26)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: '.node-version'
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --dev --all-extras  # install extras for examples to avoid pyright missing imports errors-
