@@ -38,10 +38,10 @@ jobs:
         mode: [--remote-only, --local-only, --full]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -113,7 +113,7 @@ jobs:
         mode: [--remote-only, --local-only, --full]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Run install.sh ${{ matrix.mode }}
         run: bash browser_use/skill_cli/install.sh ${{ matrix.mode }}
@@ -185,10 +185,10 @@ jobs:
       # Fix Unicode output on Windows (checkmarks, etc.)
       PYTHONIOENCODING: utf-8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Python (Windows requires manual setup)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -230,7 +230,7 @@ jobs:
     name: uv pip install (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -278,7 +278,7 @@ jobs:
     name: uvx browser-use[cli] (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
